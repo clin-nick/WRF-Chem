@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = cb05_sorg_vbs_aq_Precision.f90  \
+	 cb05_sorg_vbs_aq_Parameters.f90     \
+	 cb05_sorg_vbs_aq_Global.f90  
+
+GENOBJ = cb05_sorg_vbs_aq_Precision.o    \
+	 cb05_sorg_vbs_aq_Parameters.o       \
+	 cb05_sorg_vbs_aq_Global.o     
+
+FUNSRC = cb05_sorg_vbs_aq_Function.f90 
+FUNOBJ = cb05_sorg_vbs_aq_Function.o 
+
+JACSRC = cb05_sorg_vbs_aq_JacobianSP.f90  cb05_sorg_vbs_aq_Jacobian.f90
+JACOBJ = cb05_sorg_vbs_aq_JacobianSP.o    cb05_sorg_vbs_aq_Jacobian.o
+
+HESSRC = cb05_sorg_vbs_aq_HessianSP.f90   cb05_sorg_vbs_aq_Hessian.f90
+HESOBJ = cb05_sorg_vbs_aq_HessianSP.o     cb05_sorg_vbs_aq_Hessian.o
+
+STMSRC = cb05_sorg_vbs_aq_StoichiomSP.f90 cb05_sorg_vbs_aq_Stoichiom.f90 
+STMOBJ = cb05_sorg_vbs_aq_StoichiomSP.o   cb05_sorg_vbs_aq_Stoichiom.o
+
+UTLSRC = cb05_sorg_vbs_aq_Rates.f90 cb05_sorg_vbs_aq_Util.f90 cb05_sorg_vbs_aq_Monitor.f90
+UTLOBJ = cb05_sorg_vbs_aq_Rates.o   cb05_sorg_vbs_aq_Util.o   cb05_sorg_vbs_aq_Monitor.o
+
+LASRC  = cb05_sorg_vbs_aq_LinearAlgebra.f90 
+LAOBJ  = cb05_sorg_vbs_aq_LinearAlgebra.o   
+
+STOCHSRC = cb05_sorg_vbs_aq_Stochastic.f90 
+STOCHOBJ = cb05_sorg_vbs_aq_Stochastic.o 
+
+MAINSRC = cb05_sorg_vbs_aq_Main.f90   cb05_sorg_vbs_aq_Initialize.f90   cb05_sorg_vbs_aq_Integrator.f90 cb05_sorg_vbs_aq_Model.f90
+MAINOBJ = cb05_sorg_vbs_aq_Main.o     cb05_sorg_vbs_aq_Initialize.o     cb05_sorg_vbs_aq_Integrator.o   cb05_sorg_vbs_aq_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o cb05_sorg_vbs_aq.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o cb05_sorg_vbs_aq_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cb05_sorg_vbs_aq_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cb05_sorg_vbs_aq_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cb05_sorg_vbs_aq_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f cb05_sorg_vbs_aq*.o cb05_sorg_vbs_aq*.mod \
+	cb05_sorg_vbs_aq*.dat cb05_sorg_vbs_aq.exe cb05_sorg_vbs_aq*.mexglx \
+	cb05_sorg_vbs_aq.map
+
+distclean:
+	rm -f cb05_sorg_vbs_aq*.o cb05_sorg_vbs_aq*.mod \
+	cb05_sorg_vbs_aq*.dat cb05_sorg_vbs_aq.exe cb05_sorg_vbs_aq.map \
+	cb05_sorg_vbs_aq*.f90 cb05_sorg_vbs_aq_*.mexglx
+
+cb05_sorg_vbs_aq_Precision.o: cb05_sorg_vbs_aq_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Parameters.o: cb05_sorg_vbs_aq_Parameters.f90 \
+	            cb05_sorg_vbs_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Monitor.o: cb05_sorg_vbs_aq_Monitor.f90 \
+	             cb05_sorg_vbs_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Global.o: cb05_sorg_vbs_aq_Global.f90 \
+	            cb05_sorg_vbs_aq_Parameters.o cb05_sorg_vbs_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Initialize.o: cb05_sorg_vbs_aq_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Function.o: cb05_sorg_vbs_aq_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Stochastic.o: cb05_sorg_vbs_aq_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_JacobianSP.o: cb05_sorg_vbs_aq_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Jacobian.o: cb05_sorg_vbs_aq_Jacobian.f90  $(GENOBJ) cb05_sorg_vbs_aq_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_LinearAlgebra.o: cb05_sorg_vbs_aq_LinearAlgebra.f90 $(GENOBJ) cb05_sorg_vbs_aq_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Rates.o: cb05_sorg_vbs_aq_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_HessianSP.o: cb05_sorg_vbs_aq_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Hessian.o:  cb05_sorg_vbs_aq_Hessian.f90 $(GENOBJ) cb05_sorg_vbs_aq_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_StoichiomSP.o: cb05_sorg_vbs_aq_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Stoichiom.o: cb05_sorg_vbs_aq_Stoichiom.f90  $(GENOBJ) cb05_sorg_vbs_aq_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Util.o: cb05_sorg_vbs_aq_Util.f90  $(GENOBJ) cb05_sorg_vbs_aq_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Main.o: cb05_sorg_vbs_aq_Main.f90  $(ALLOBJ) cb05_sorg_vbs_aq_Initialize.o cb05_sorg_vbs_aq_Model.o cb05_sorg_vbs_aq_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Model.o: cb05_sorg_vbs_aq_Model.f90  $(ALLOBJ) cb05_sorg_vbs_aq_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cb05_sorg_vbs_aq_Integrator.o: cb05_sorg_vbs_aq_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

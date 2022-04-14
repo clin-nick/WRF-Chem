@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = mozart_Precision.f90  \
+	 mozart_Parameters.f90     \
+	 mozart_Global.f90  
+
+GENOBJ = mozart_Precision.o    \
+	 mozart_Parameters.o       \
+	 mozart_Global.o     
+
+FUNSRC = mozart_Function.f90 
+FUNOBJ = mozart_Function.o 
+
+JACSRC = mozart_JacobianSP.f90  mozart_Jacobian.f90
+JACOBJ = mozart_JacobianSP.o    mozart_Jacobian.o
+
+HESSRC = mozart_HessianSP.f90   mozart_Hessian.f90
+HESOBJ = mozart_HessianSP.o     mozart_Hessian.o
+
+STMSRC = mozart_StoichiomSP.f90 mozart_Stoichiom.f90 
+STMOBJ = mozart_StoichiomSP.o   mozart_Stoichiom.o
+
+UTLSRC = mozart_Rates.f90 mozart_Util.f90 mozart_Monitor.f90
+UTLOBJ = mozart_Rates.o   mozart_Util.o   mozart_Monitor.o
+
+LASRC  = mozart_LinearAlgebra.f90 
+LAOBJ  = mozart_LinearAlgebra.o   
+
+STOCHSRC = mozart_Stochastic.f90 
+STOCHOBJ = mozart_Stochastic.o 
+
+MAINSRC = mozart_Main.f90   mozart_Initialize.f90   mozart_Integrator.f90 mozart_Model.f90
+MAINOBJ = mozart_Main.o     mozart_Initialize.o     mozart_Integrator.o   mozart_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o mozart.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o mozart_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozart_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozart_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozart_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f mozart*.o mozart*.mod \
+	mozart*.dat mozart.exe mozart*.mexglx \
+	mozart.map
+
+distclean:
+	rm -f mozart*.o mozart*.mod \
+	mozart*.dat mozart.exe mozart.map \
+	mozart*.f90 mozart_*.mexglx
+
+mozart_Precision.o: mozart_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+mozart_Parameters.o: mozart_Parameters.f90 \
+	            mozart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Monitor.o: mozart_Monitor.f90 \
+	             mozart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Global.o: mozart_Global.f90 \
+	            mozart_Parameters.o mozart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Initialize.o: mozart_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozart_Function.o: mozart_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozart_Stochastic.o: mozart_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozart_JacobianSP.o: mozart_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozart_Jacobian.o: mozart_Jacobian.f90  $(GENOBJ) mozart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozart_LinearAlgebra.o: mozart_LinearAlgebra.f90 $(GENOBJ) mozart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Rates.o: mozart_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozart_HessianSP.o: mozart_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozart_Hessian.o:  mozart_Hessian.f90 $(GENOBJ) mozart_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozart_StoichiomSP.o: mozart_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozart_Stoichiom.o: mozart_Stoichiom.f90  $(GENOBJ) mozart_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Util.o: mozart_Util.f90  $(GENOBJ) mozart_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Main.o: mozart_Main.f90  $(ALLOBJ) mozart_Initialize.o mozart_Model.o mozart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Model.o: mozart_Model.f90  $(ALLOBJ) mozart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+mozart_Integrator.o: mozart_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

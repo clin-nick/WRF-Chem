@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = cri_mosaic_8bin_aq_Precision.f90  \
+	 cri_mosaic_8bin_aq_Parameters.f90     \
+	 cri_mosaic_8bin_aq_Global.f90  
+
+GENOBJ = cri_mosaic_8bin_aq_Precision.o    \
+	 cri_mosaic_8bin_aq_Parameters.o       \
+	 cri_mosaic_8bin_aq_Global.o     
+
+FUNSRC = cri_mosaic_8bin_aq_Function.f90 
+FUNOBJ = cri_mosaic_8bin_aq_Function.o 
+
+JACSRC = cri_mosaic_8bin_aq_JacobianSP.f90  cri_mosaic_8bin_aq_Jacobian.f90
+JACOBJ = cri_mosaic_8bin_aq_JacobianSP.o    cri_mosaic_8bin_aq_Jacobian.o
+
+HESSRC = cri_mosaic_8bin_aq_HessianSP.f90   cri_mosaic_8bin_aq_Hessian.f90
+HESOBJ = cri_mosaic_8bin_aq_HessianSP.o     cri_mosaic_8bin_aq_Hessian.o
+
+STMSRC = cri_mosaic_8bin_aq_StoichiomSP.f90 cri_mosaic_8bin_aq_Stoichiom.f90 
+STMOBJ = cri_mosaic_8bin_aq_StoichiomSP.o   cri_mosaic_8bin_aq_Stoichiom.o
+
+UTLSRC = cri_mosaic_8bin_aq_Rates.f90 cri_mosaic_8bin_aq_Util.f90 cri_mosaic_8bin_aq_Monitor.f90
+UTLOBJ = cri_mosaic_8bin_aq_Rates.o   cri_mosaic_8bin_aq_Util.o   cri_mosaic_8bin_aq_Monitor.o
+
+LASRC  = cri_mosaic_8bin_aq_LinearAlgebra.f90 
+LAOBJ  = cri_mosaic_8bin_aq_LinearAlgebra.o   
+
+STOCHSRC = cri_mosaic_8bin_aq_Stochastic.f90 
+STOCHOBJ = cri_mosaic_8bin_aq_Stochastic.o 
+
+MAINSRC = cri_mosaic_8bin_aq_Main.f90   cri_mosaic_8bin_aq_Initialize.f90   cri_mosaic_8bin_aq_Integrator.f90 cri_mosaic_8bin_aq_Model.f90
+MAINOBJ = cri_mosaic_8bin_aq_Main.o     cri_mosaic_8bin_aq_Initialize.o     cri_mosaic_8bin_aq_Integrator.o   cri_mosaic_8bin_aq_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o cri_mosaic_8bin_aq.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o cri_mosaic_8bin_aq_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cri_mosaic_8bin_aq_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cri_mosaic_8bin_aq_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cri_mosaic_8bin_aq_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f cri_mosaic_8bin_aq*.o cri_mosaic_8bin_aq*.mod \
+	cri_mosaic_8bin_aq*.dat cri_mosaic_8bin_aq.exe cri_mosaic_8bin_aq*.mexglx \
+	cri_mosaic_8bin_aq.map
+
+distclean:
+	rm -f cri_mosaic_8bin_aq*.o cri_mosaic_8bin_aq*.mod \
+	cri_mosaic_8bin_aq*.dat cri_mosaic_8bin_aq.exe cri_mosaic_8bin_aq.map \
+	cri_mosaic_8bin_aq*.f90 cri_mosaic_8bin_aq_*.mexglx
+
+cri_mosaic_8bin_aq_Precision.o: cri_mosaic_8bin_aq_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Parameters.o: cri_mosaic_8bin_aq_Parameters.f90 \
+	            cri_mosaic_8bin_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Monitor.o: cri_mosaic_8bin_aq_Monitor.f90 \
+	             cri_mosaic_8bin_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Global.o: cri_mosaic_8bin_aq_Global.f90 \
+	            cri_mosaic_8bin_aq_Parameters.o cri_mosaic_8bin_aq_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Initialize.o: cri_mosaic_8bin_aq_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Function.o: cri_mosaic_8bin_aq_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Stochastic.o: cri_mosaic_8bin_aq_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_JacobianSP.o: cri_mosaic_8bin_aq_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Jacobian.o: cri_mosaic_8bin_aq_Jacobian.f90  $(GENOBJ) cri_mosaic_8bin_aq_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_LinearAlgebra.o: cri_mosaic_8bin_aq_LinearAlgebra.f90 $(GENOBJ) cri_mosaic_8bin_aq_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Rates.o: cri_mosaic_8bin_aq_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_HessianSP.o: cri_mosaic_8bin_aq_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Hessian.o:  cri_mosaic_8bin_aq_Hessian.f90 $(GENOBJ) cri_mosaic_8bin_aq_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_StoichiomSP.o: cri_mosaic_8bin_aq_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Stoichiom.o: cri_mosaic_8bin_aq_Stoichiom.f90  $(GENOBJ) cri_mosaic_8bin_aq_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Util.o: cri_mosaic_8bin_aq_Util.f90  $(GENOBJ) cri_mosaic_8bin_aq_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Main.o: cri_mosaic_8bin_aq_Main.f90  $(ALLOBJ) cri_mosaic_8bin_aq_Initialize.o cri_mosaic_8bin_aq_Model.o cri_mosaic_8bin_aq_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Model.o: cri_mosaic_8bin_aq_Model.f90  $(ALLOBJ) cri_mosaic_8bin_aq_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cri_mosaic_8bin_aq_Integrator.o: cri_mosaic_8bin_aq_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

@@ -1,0 +1,30 @@
+      MODULE HETAERO
+
+      USE HETDATA
+
+
+
+      INTEGER, PARAMETER :: IAERORATE = 1
+
+
+
+      INTEGER, PARAMETER :: ISO2     = 1
+
+
+      REAL :: XMOLWEI( NRXNAERO )
+      DATA XMOLWEI/ 64.0 / 
+
+
+      REAL :: DG0( NRXNAERO )
+      DATA DG0 / 0.1151 /
+
+
+
+
+
+
+
+      INTEGER, PARAMETER :: NGAMMA = 2
+
+      END MODULE HETAERO
+

@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = mozcart_Precision.f90  \
+	 mozcart_Parameters.f90     \
+	 mozcart_Global.f90  
+
+GENOBJ = mozcart_Precision.o    \
+	 mozcart_Parameters.o       \
+	 mozcart_Global.o     
+
+FUNSRC = mozcart_Function.f90 
+FUNOBJ = mozcart_Function.o 
+
+JACSRC = mozcart_JacobianSP.f90  mozcart_Jacobian.f90
+JACOBJ = mozcart_JacobianSP.o    mozcart_Jacobian.o
+
+HESSRC = mozcart_HessianSP.f90   mozcart_Hessian.f90
+HESOBJ = mozcart_HessianSP.o     mozcart_Hessian.o
+
+STMSRC = mozcart_StoichiomSP.f90 mozcart_Stoichiom.f90 
+STMOBJ = mozcart_StoichiomSP.o   mozcart_Stoichiom.o
+
+UTLSRC = mozcart_Rates.f90 mozcart_Util.f90 mozcart_Monitor.f90
+UTLOBJ = mozcart_Rates.o   mozcart_Util.o   mozcart_Monitor.o
+
+LASRC  = mozcart_LinearAlgebra.f90 
+LAOBJ  = mozcart_LinearAlgebra.o   
+
+STOCHSRC = mozcart_Stochastic.f90 
+STOCHOBJ = mozcart_Stochastic.o 
+
+MAINSRC = mozcart_Main.f90   mozcart_Initialize.f90   mozcart_Integrator.f90 mozcart_Model.f90
+MAINOBJ = mozcart_Main.o     mozcart_Initialize.o     mozcart_Integrator.o   mozcart_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o mozcart.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o mozcart_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozcart_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozcart_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O mozcart_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f mozcart*.o mozcart*.mod \
+	mozcart*.dat mozcart.exe mozcart*.mexglx \
+	mozcart.map
+
+distclean:
+	rm -f mozcart*.o mozcart*.mod \
+	mozcart*.dat mozcart.exe mozcart.map \
+	mozcart*.f90 mozcart_*.mexglx
+
+mozcart_Precision.o: mozcart_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+mozcart_Parameters.o: mozcart_Parameters.f90 \
+	            mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Monitor.o: mozcart_Monitor.f90 \
+	             mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Global.o: mozcart_Global.f90 \
+	            mozcart_Parameters.o mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Initialize.o: mozcart_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozcart_Function.o: mozcart_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozcart_Stochastic.o: mozcart_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozcart_JacobianSP.o: mozcart_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozcart_Jacobian.o: mozcart_Jacobian.f90  $(GENOBJ) mozcart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_LinearAlgebra.o: mozcart_LinearAlgebra.f90 $(GENOBJ) mozcart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Rates.o: mozcart_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+mozcart_HessianSP.o: mozcart_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozcart_Hessian.o:  mozcart_Hessian.f90 $(GENOBJ) mozcart_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_StoichiomSP.o: mozcart_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+mozcart_Stoichiom.o: mozcart_Stoichiom.f90  $(GENOBJ) mozcart_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Util.o: mozcart_Util.f90  $(GENOBJ) mozcart_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Main.o: mozcart_Main.f90  $(ALLOBJ) mozcart_Initialize.o mozcart_Model.o mozcart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Model.o: mozcart_Model.f90  $(ALLOBJ) mozcart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+mozcart_Integrator.o: mozcart_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<
