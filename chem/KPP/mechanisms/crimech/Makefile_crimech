@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = crimech_Precision.f90  \
+	 crimech_Parameters.f90     \
+	 crimech_Global.f90  
+
+GENOBJ = crimech_Precision.o    \
+	 crimech_Parameters.o       \
+	 crimech_Global.o     
+
+FUNSRC = crimech_Function.f90 
+FUNOBJ = crimech_Function.o 
+
+JACSRC = crimech_JacobianSP.f90  crimech_Jacobian.f90
+JACOBJ = crimech_JacobianSP.o    crimech_Jacobian.o
+
+HESSRC = crimech_HessianSP.f90   crimech_Hessian.f90
+HESOBJ = crimech_HessianSP.o     crimech_Hessian.o
+
+STMSRC = crimech_StoichiomSP.f90 crimech_Stoichiom.f90 
+STMOBJ = crimech_StoichiomSP.o   crimech_Stoichiom.o
+
+UTLSRC = crimech_Rates.f90 crimech_Util.f90 crimech_Monitor.f90
+UTLOBJ = crimech_Rates.o   crimech_Util.o   crimech_Monitor.o
+
+LASRC  = crimech_LinearAlgebra.f90 
+LAOBJ  = crimech_LinearAlgebra.o   
+
+STOCHSRC = crimech_Stochastic.f90 
+STOCHOBJ = crimech_Stochastic.o 
+
+MAINSRC = crimech_Main.f90   crimech_Initialize.f90   crimech_Integrator.f90 crimech_Model.f90
+MAINOBJ = crimech_Main.o     crimech_Initialize.o     crimech_Integrator.o   crimech_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o crimech.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o crimech_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O crimech_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O crimech_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O crimech_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f crimech*.o crimech*.mod \
+	crimech*.dat crimech.exe crimech*.mexglx \
+	crimech.map
+
+distclean:
+	rm -f crimech*.o crimech*.mod \
+	crimech*.dat crimech.exe crimech.map \
+	crimech*.f90 crimech_*.mexglx
+
+crimech_Precision.o: crimech_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+crimech_Parameters.o: crimech_Parameters.f90 \
+	            crimech_Precision.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Monitor.o: crimech_Monitor.f90 \
+	             crimech_Precision.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Global.o: crimech_Global.f90 \
+	            crimech_Parameters.o crimech_Precision.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Initialize.o: crimech_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+crimech_Function.o: crimech_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+crimech_Stochastic.o: crimech_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+crimech_JacobianSP.o: crimech_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+crimech_Jacobian.o: crimech_Jacobian.f90  $(GENOBJ) crimech_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+crimech_LinearAlgebra.o: crimech_LinearAlgebra.f90 $(GENOBJ) crimech_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Rates.o: crimech_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+crimech_HessianSP.o: crimech_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+crimech_Hessian.o:  crimech_Hessian.f90 $(GENOBJ) crimech_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+crimech_StoichiomSP.o: crimech_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+crimech_Stoichiom.o: crimech_Stoichiom.f90  $(GENOBJ) crimech_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Util.o: crimech_Util.f90  $(GENOBJ) crimech_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Main.o: crimech_Main.f90  $(ALLOBJ) crimech_Initialize.o crimech_Model.o crimech_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Model.o: crimech_Model.f90  $(ALLOBJ) crimech_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+crimech_Integrator.o: crimech_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

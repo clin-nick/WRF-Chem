@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = nmhc9_Precision.f90  \
+	 nmhc9_Parameters.f90     \
+	 nmhc9_Global.f90  
+
+GENOBJ = nmhc9_Precision.o    \
+	 nmhc9_Parameters.o       \
+	 nmhc9_Global.o     
+
+FUNSRC = nmhc9_Function.f90 
+FUNOBJ = nmhc9_Function.o 
+
+JACSRC = nmhc9_JacobianSP.f90  nmhc9_Jacobian.f90
+JACOBJ = nmhc9_JacobianSP.o    nmhc9_Jacobian.o
+
+HESSRC = nmhc9_HessianSP.f90   nmhc9_Hessian.f90
+HESOBJ = nmhc9_HessianSP.o     nmhc9_Hessian.o
+
+STMSRC = nmhc9_StoichiomSP.f90 nmhc9_Stoichiom.f90 
+STMOBJ = nmhc9_StoichiomSP.o   nmhc9_Stoichiom.o
+
+UTLSRC = nmhc9_Rates.f90 nmhc9_Util.f90 nmhc9_Monitor.f90
+UTLOBJ = nmhc9_Rates.o   nmhc9_Util.o   nmhc9_Monitor.o
+
+LASRC  = nmhc9_LinearAlgebra.f90 
+LAOBJ  = nmhc9_LinearAlgebra.o   
+
+STOCHSRC = nmhc9_Stochastic.f90 
+STOCHOBJ = nmhc9_Stochastic.o 
+
+MAINSRC = nmhc9_Main.f90   nmhc9_Initialize.f90   nmhc9_Integrator.f90 nmhc9_Model.f90
+MAINOBJ = nmhc9_Main.o     nmhc9_Initialize.o     nmhc9_Integrator.o   nmhc9_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o nmhc9.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o nmhc9_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O nmhc9_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O nmhc9_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O nmhc9_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f nmhc9*.o nmhc9*.mod \
+	nmhc9*.dat nmhc9.exe nmhc9*.mexglx \
+	nmhc9.map
+
+distclean:
+	rm -f nmhc9*.o nmhc9*.mod \
+	nmhc9*.dat nmhc9.exe nmhc9.map \
+	nmhc9*.f90 nmhc9_*.mexglx
+
+nmhc9_Precision.o: nmhc9_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Parameters.o: nmhc9_Parameters.f90 \
+	            nmhc9_Precision.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Monitor.o: nmhc9_Monitor.f90 \
+	             nmhc9_Precision.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Global.o: nmhc9_Global.f90 \
+	            nmhc9_Parameters.o nmhc9_Precision.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Initialize.o: nmhc9_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Function.o: nmhc9_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Stochastic.o: nmhc9_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+nmhc9_JacobianSP.o: nmhc9_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Jacobian.o: nmhc9_Jacobian.f90  $(GENOBJ) nmhc9_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_LinearAlgebra.o: nmhc9_LinearAlgebra.f90 $(GENOBJ) nmhc9_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Rates.o: nmhc9_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+nmhc9_HessianSP.o: nmhc9_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Hessian.o:  nmhc9_Hessian.f90 $(GENOBJ) nmhc9_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_StoichiomSP.o: nmhc9_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Stoichiom.o: nmhc9_Stoichiom.f90  $(GENOBJ) nmhc9_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Util.o: nmhc9_Util.f90  $(GENOBJ) nmhc9_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Main.o: nmhc9_Main.f90  $(ALLOBJ) nmhc9_Initialize.o nmhc9_Model.o nmhc9_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Model.o: nmhc9_Model.f90  $(ALLOBJ) nmhc9_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+nmhc9_Integrator.o: nmhc9_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

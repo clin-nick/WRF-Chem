@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = racm_esrlsorg_Precision.f90  \
+	 racm_esrlsorg_Parameters.f90     \
+	 racm_esrlsorg_Global.f90  
+
+GENOBJ = racm_esrlsorg_Precision.o    \
+	 racm_esrlsorg_Parameters.o       \
+	 racm_esrlsorg_Global.o     
+
+FUNSRC = racm_esrlsorg_Function.f90 
+FUNOBJ = racm_esrlsorg_Function.o 
+
+JACSRC = racm_esrlsorg_JacobianSP.f90  racm_esrlsorg_Jacobian.f90
+JACOBJ = racm_esrlsorg_JacobianSP.o    racm_esrlsorg_Jacobian.o
+
+HESSRC = racm_esrlsorg_HessianSP.f90   racm_esrlsorg_Hessian.f90
+HESOBJ = racm_esrlsorg_HessianSP.o     racm_esrlsorg_Hessian.o
+
+STMSRC = racm_esrlsorg_StoichiomSP.f90 racm_esrlsorg_Stoichiom.f90 
+STMOBJ = racm_esrlsorg_StoichiomSP.o   racm_esrlsorg_Stoichiom.o
+
+UTLSRC = racm_esrlsorg_Rates.f90 racm_esrlsorg_Util.f90 racm_esrlsorg_Monitor.f90
+UTLOBJ = racm_esrlsorg_Rates.o   racm_esrlsorg_Util.o   racm_esrlsorg_Monitor.o
+
+LASRC  = racm_esrlsorg_LinearAlgebra.f90 
+LAOBJ  = racm_esrlsorg_LinearAlgebra.o   
+
+STOCHSRC = racm_esrlsorg_Stochastic.f90 
+STOCHOBJ = racm_esrlsorg_Stochastic.o 
+
+MAINSRC = racm_esrlsorg_Main.f90   racm_esrlsorg_Initialize.f90   racm_esrlsorg_Integrator.f90 racm_esrlsorg_Model.f90
+MAINOBJ = racm_esrlsorg_Main.o     racm_esrlsorg_Initialize.o     racm_esrlsorg_Integrator.o   racm_esrlsorg_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o racm_esrlsorg.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o racm_esrlsorg_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_esrlsorg_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_esrlsorg_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_esrlsorg_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f racm_esrlsorg*.o racm_esrlsorg*.mod \
+	racm_esrlsorg*.dat racm_esrlsorg.exe racm_esrlsorg*.mexglx \
+	racm_esrlsorg.map
+
+distclean:
+	rm -f racm_esrlsorg*.o racm_esrlsorg*.mod \
+	racm_esrlsorg*.dat racm_esrlsorg.exe racm_esrlsorg.map \
+	racm_esrlsorg*.f90 racm_esrlsorg_*.mexglx
+
+racm_esrlsorg_Precision.o: racm_esrlsorg_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Parameters.o: racm_esrlsorg_Parameters.f90 \
+	            racm_esrlsorg_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Monitor.o: racm_esrlsorg_Monitor.f90 \
+	             racm_esrlsorg_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Global.o: racm_esrlsorg_Global.f90 \
+	            racm_esrlsorg_Parameters.o racm_esrlsorg_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Initialize.o: racm_esrlsorg_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Function.o: racm_esrlsorg_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Stochastic.o: racm_esrlsorg_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_JacobianSP.o: racm_esrlsorg_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Jacobian.o: racm_esrlsorg_Jacobian.f90  $(GENOBJ) racm_esrlsorg_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_LinearAlgebra.o: racm_esrlsorg_LinearAlgebra.f90 $(GENOBJ) racm_esrlsorg_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Rates.o: racm_esrlsorg_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_HessianSP.o: racm_esrlsorg_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Hessian.o:  racm_esrlsorg_Hessian.f90 $(GENOBJ) racm_esrlsorg_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_StoichiomSP.o: racm_esrlsorg_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Stoichiom.o: racm_esrlsorg_Stoichiom.f90  $(GENOBJ) racm_esrlsorg_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Util.o: racm_esrlsorg_Util.f90  $(GENOBJ) racm_esrlsorg_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Main.o: racm_esrlsorg_Main.f90  $(ALLOBJ) racm_esrlsorg_Initialize.o racm_esrlsorg_Model.o racm_esrlsorg_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Model.o: racm_esrlsorg_Model.f90  $(ALLOBJ) racm_esrlsorg_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+racm_esrlsorg_Integrator.o: racm_esrlsorg_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

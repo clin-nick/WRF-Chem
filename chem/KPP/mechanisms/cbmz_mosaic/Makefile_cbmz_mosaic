@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = cbmz_mosaic_Precision.f90  \
+	 cbmz_mosaic_Parameters.f90     \
+	 cbmz_mosaic_Global.f90  
+
+GENOBJ = cbmz_mosaic_Precision.o    \
+	 cbmz_mosaic_Parameters.o       \
+	 cbmz_mosaic_Global.o     
+
+FUNSRC = cbmz_mosaic_Function.f90 
+FUNOBJ = cbmz_mosaic_Function.o 
+
+JACSRC = cbmz_mosaic_JacobianSP.f90  cbmz_mosaic_Jacobian.f90
+JACOBJ = cbmz_mosaic_JacobianSP.o    cbmz_mosaic_Jacobian.o
+
+HESSRC = cbmz_mosaic_HessianSP.f90   cbmz_mosaic_Hessian.f90
+HESOBJ = cbmz_mosaic_HessianSP.o     cbmz_mosaic_Hessian.o
+
+STMSRC = cbmz_mosaic_StoichiomSP.f90 cbmz_mosaic_Stoichiom.f90 
+STMOBJ = cbmz_mosaic_StoichiomSP.o   cbmz_mosaic_Stoichiom.o
+
+UTLSRC = cbmz_mosaic_Rates.f90 cbmz_mosaic_Util.f90 cbmz_mosaic_Monitor.f90
+UTLOBJ = cbmz_mosaic_Rates.o   cbmz_mosaic_Util.o   cbmz_mosaic_Monitor.o
+
+LASRC  = cbmz_mosaic_LinearAlgebra.f90 
+LAOBJ  = cbmz_mosaic_LinearAlgebra.o   
+
+STOCHSRC = cbmz_mosaic_Stochastic.f90 
+STOCHOBJ = cbmz_mosaic_Stochastic.o 
+
+MAINSRC = cbmz_mosaic_Main.f90   cbmz_mosaic_Initialize.f90   cbmz_mosaic_Integrator.f90 cbmz_mosaic_Model.f90
+MAINOBJ = cbmz_mosaic_Main.o     cbmz_mosaic_Initialize.o     cbmz_mosaic_Integrator.o   cbmz_mosaic_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o cbmz_mosaic.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o cbmz_mosaic_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_mosaic_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_mosaic_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_mosaic_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f cbmz_mosaic*.o cbmz_mosaic*.mod \
+	cbmz_mosaic*.dat cbmz_mosaic.exe cbmz_mosaic*.mexglx \
+	cbmz_mosaic.map
+
+distclean:
+	rm -f cbmz_mosaic*.o cbmz_mosaic*.mod \
+	cbmz_mosaic*.dat cbmz_mosaic.exe cbmz_mosaic.map \
+	cbmz_mosaic*.f90 cbmz_mosaic_*.mexglx
+
+cbmz_mosaic_Precision.o: cbmz_mosaic_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Parameters.o: cbmz_mosaic_Parameters.f90 \
+	            cbmz_mosaic_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Monitor.o: cbmz_mosaic_Monitor.f90 \
+	             cbmz_mosaic_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Global.o: cbmz_mosaic_Global.f90 \
+	            cbmz_mosaic_Parameters.o cbmz_mosaic_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Initialize.o: cbmz_mosaic_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Function.o: cbmz_mosaic_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Stochastic.o: cbmz_mosaic_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_JacobianSP.o: cbmz_mosaic_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Jacobian.o: cbmz_mosaic_Jacobian.f90  $(GENOBJ) cbmz_mosaic_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_LinearAlgebra.o: cbmz_mosaic_LinearAlgebra.f90 $(GENOBJ) cbmz_mosaic_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Rates.o: cbmz_mosaic_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_HessianSP.o: cbmz_mosaic_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Hessian.o:  cbmz_mosaic_Hessian.f90 $(GENOBJ) cbmz_mosaic_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_StoichiomSP.o: cbmz_mosaic_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Stoichiom.o: cbmz_mosaic_Stoichiom.f90  $(GENOBJ) cbmz_mosaic_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Util.o: cbmz_mosaic_Util.f90  $(GENOBJ) cbmz_mosaic_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Main.o: cbmz_mosaic_Main.f90  $(ALLOBJ) cbmz_mosaic_Initialize.o cbmz_mosaic_Model.o cbmz_mosaic_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Model.o: cbmz_mosaic_Model.f90  $(ALLOBJ) cbmz_mosaic_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_mosaic_Integrator.o: cbmz_mosaic_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = racm_soa_vbs_het_Precision.f90  \
+	 racm_soa_vbs_het_Parameters.f90     \
+	 racm_soa_vbs_het_Global.f90  
+
+GENOBJ = racm_soa_vbs_het_Precision.o    \
+	 racm_soa_vbs_het_Parameters.o       \
+	 racm_soa_vbs_het_Global.o     
+
+FUNSRC = racm_soa_vbs_het_Function.f90 
+FUNOBJ = racm_soa_vbs_het_Function.o 
+
+JACSRC = racm_soa_vbs_het_JacobianSP.f90  racm_soa_vbs_het_Jacobian.f90
+JACOBJ = racm_soa_vbs_het_JacobianSP.o    racm_soa_vbs_het_Jacobian.o
+
+HESSRC = racm_soa_vbs_het_HessianSP.f90   racm_soa_vbs_het_Hessian.f90
+HESOBJ = racm_soa_vbs_het_HessianSP.o     racm_soa_vbs_het_Hessian.o
+
+STMSRC = racm_soa_vbs_het_StoichiomSP.f90 racm_soa_vbs_het_Stoichiom.f90 
+STMOBJ = racm_soa_vbs_het_StoichiomSP.o   racm_soa_vbs_het_Stoichiom.o
+
+UTLSRC = racm_soa_vbs_het_Rates.f90 racm_soa_vbs_het_Util.f90 racm_soa_vbs_het_Monitor.f90
+UTLOBJ = racm_soa_vbs_het_Rates.o   racm_soa_vbs_het_Util.o   racm_soa_vbs_het_Monitor.o
+
+LASRC  = racm_soa_vbs_het_LinearAlgebra.f90 
+LAOBJ  = racm_soa_vbs_het_LinearAlgebra.o   
+
+STOCHSRC = racm_soa_vbs_het_Stochastic.f90 
+STOCHOBJ = racm_soa_vbs_het_Stochastic.o 
+
+MAINSRC = racm_soa_vbs_het_Main.f90   racm_soa_vbs_het_Initialize.f90   racm_soa_vbs_het_Integrator.f90 racm_soa_vbs_het_Model.f90
+MAINOBJ = racm_soa_vbs_het_Main.o     racm_soa_vbs_het_Initialize.o     racm_soa_vbs_het_Integrator.o   racm_soa_vbs_het_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o racm_soa_vbs_het.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o racm_soa_vbs_het_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_soa_vbs_het_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_soa_vbs_het_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O racm_soa_vbs_het_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f racm_soa_vbs_het*.o racm_soa_vbs_het*.mod \
+	racm_soa_vbs_het*.dat racm_soa_vbs_het.exe racm_soa_vbs_het*.mexglx \
+	racm_soa_vbs_het.map
+
+distclean:
+	rm -f racm_soa_vbs_het*.o racm_soa_vbs_het*.mod \
+	racm_soa_vbs_het*.dat racm_soa_vbs_het.exe racm_soa_vbs_het.map \
+	racm_soa_vbs_het*.f90 racm_soa_vbs_het_*.mexglx
+
+racm_soa_vbs_het_Precision.o: racm_soa_vbs_het_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Parameters.o: racm_soa_vbs_het_Parameters.f90 \
+	            racm_soa_vbs_het_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Monitor.o: racm_soa_vbs_het_Monitor.f90 \
+	             racm_soa_vbs_het_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Global.o: racm_soa_vbs_het_Global.f90 \
+	            racm_soa_vbs_het_Parameters.o racm_soa_vbs_het_Precision.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Initialize.o: racm_soa_vbs_het_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Function.o: racm_soa_vbs_het_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Stochastic.o: racm_soa_vbs_het_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_JacobianSP.o: racm_soa_vbs_het_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Jacobian.o: racm_soa_vbs_het_Jacobian.f90  $(GENOBJ) racm_soa_vbs_het_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_LinearAlgebra.o: racm_soa_vbs_het_LinearAlgebra.f90 $(GENOBJ) racm_soa_vbs_het_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Rates.o: racm_soa_vbs_het_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_HessianSP.o: racm_soa_vbs_het_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Hessian.o:  racm_soa_vbs_het_Hessian.f90 $(GENOBJ) racm_soa_vbs_het_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_StoichiomSP.o: racm_soa_vbs_het_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Stoichiom.o: racm_soa_vbs_het_Stoichiom.f90  $(GENOBJ) racm_soa_vbs_het_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Util.o: racm_soa_vbs_het_Util.f90  $(GENOBJ) racm_soa_vbs_het_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Main.o: racm_soa_vbs_het_Main.f90  $(ALLOBJ) racm_soa_vbs_het_Initialize.o racm_soa_vbs_het_Model.o racm_soa_vbs_het_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Model.o: racm_soa_vbs_het_Model.f90  $(ALLOBJ) racm_soa_vbs_het_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+racm_soa_vbs_het_Integrator.o: racm_soa_vbs_het_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = gocartracm_Precision.f90  \
+	 gocartracm_Parameters.f90     \
+	 gocartracm_Global.f90  
+
+GENOBJ = gocartracm_Precision.o    \
+	 gocartracm_Parameters.o       \
+	 gocartracm_Global.o     
+
+FUNSRC = gocartracm_Function.f90 
+FUNOBJ = gocartracm_Function.o 
+
+JACSRC = gocartracm_JacobianSP.f90  gocartracm_Jacobian.f90
+JACOBJ = gocartracm_JacobianSP.o    gocartracm_Jacobian.o
+
+HESSRC = gocartracm_HessianSP.f90   gocartracm_Hessian.f90
+HESOBJ = gocartracm_HessianSP.o     gocartracm_Hessian.o
+
+STMSRC = gocartracm_StoichiomSP.f90 gocartracm_Stoichiom.f90 
+STMOBJ = gocartracm_StoichiomSP.o   gocartracm_Stoichiom.o
+
+UTLSRC = gocartracm_Rates.f90 gocartracm_Util.f90 gocartracm_Monitor.f90
+UTLOBJ = gocartracm_Rates.o   gocartracm_Util.o   gocartracm_Monitor.o
+
+LASRC  = gocartracm_LinearAlgebra.f90 
+LAOBJ  = gocartracm_LinearAlgebra.o   
+
+STOCHSRC = gocartracm_Stochastic.f90 
+STOCHOBJ = gocartracm_Stochastic.o 
+
+MAINSRC = gocartracm_Main.f90   gocartracm_Initialize.f90   gocartracm_Integrator.f90 gocartracm_Model.f90
+MAINOBJ = gocartracm_Main.o     gocartracm_Initialize.o     gocartracm_Integrator.o   gocartracm_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o gocartracm.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o gocartracm_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O gocartracm_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O gocartracm_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O gocartracm_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f gocartracm*.o gocartracm*.mod \
+	gocartracm*.dat gocartracm.exe gocartracm*.mexglx \
+	gocartracm.map
+
+distclean:
+	rm -f gocartracm*.o gocartracm*.mod \
+	gocartracm*.dat gocartracm.exe gocartracm.map \
+	gocartracm*.f90 gocartracm_*.mexglx
+
+gocartracm_Precision.o: gocartracm_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Parameters.o: gocartracm_Parameters.f90 \
+	            gocartracm_Precision.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Monitor.o: gocartracm_Monitor.f90 \
+	             gocartracm_Precision.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Global.o: gocartracm_Global.f90 \
+	            gocartracm_Parameters.o gocartracm_Precision.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Initialize.o: gocartracm_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Function.o: gocartracm_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Stochastic.o: gocartracm_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+gocartracm_JacobianSP.o: gocartracm_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Jacobian.o: gocartracm_Jacobian.f90  $(GENOBJ) gocartracm_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_LinearAlgebra.o: gocartracm_LinearAlgebra.f90 $(GENOBJ) gocartracm_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Rates.o: gocartracm_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+gocartracm_HessianSP.o: gocartracm_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Hessian.o:  gocartracm_Hessian.f90 $(GENOBJ) gocartracm_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_StoichiomSP.o: gocartracm_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Stoichiom.o: gocartracm_Stoichiom.f90  $(GENOBJ) gocartracm_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Util.o: gocartracm_Util.f90  $(GENOBJ) gocartracm_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Main.o: gocartracm_Main.f90  $(ALLOBJ) gocartracm_Initialize.o gocartracm_Model.o gocartracm_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Model.o: gocartracm_Model.f90  $(ALLOBJ) gocartracm_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+gocartracm_Integrator.o: gocartracm_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

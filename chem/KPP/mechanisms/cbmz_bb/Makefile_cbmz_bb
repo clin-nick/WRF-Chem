@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = cbmz_bb_Precision.f90  \
+	 cbmz_bb_Parameters.f90     \
+	 cbmz_bb_Global.f90  
+
+GENOBJ = cbmz_bb_Precision.o    \
+	 cbmz_bb_Parameters.o       \
+	 cbmz_bb_Global.o     
+
+FUNSRC = cbmz_bb_Function.f90 
+FUNOBJ = cbmz_bb_Function.o 
+
+JACSRC = cbmz_bb_JacobianSP.f90  cbmz_bb_Jacobian.f90
+JACOBJ = cbmz_bb_JacobianSP.o    cbmz_bb_Jacobian.o
+
+HESSRC = cbmz_bb_HessianSP.f90   cbmz_bb_Hessian.f90
+HESOBJ = cbmz_bb_HessianSP.o     cbmz_bb_Hessian.o
+
+STMSRC = cbmz_bb_StoichiomSP.f90 cbmz_bb_Stoichiom.f90 
+STMOBJ = cbmz_bb_StoichiomSP.o   cbmz_bb_Stoichiom.o
+
+UTLSRC = cbmz_bb_Rates.f90 cbmz_bb_Util.f90 cbmz_bb_Monitor.f90
+UTLOBJ = cbmz_bb_Rates.o   cbmz_bb_Util.o   cbmz_bb_Monitor.o
+
+LASRC  = cbmz_bb_LinearAlgebra.f90 
+LAOBJ  = cbmz_bb_LinearAlgebra.o   
+
+STOCHSRC = cbmz_bb_Stochastic.f90 
+STOCHOBJ = cbmz_bb_Stochastic.o 
+
+MAINSRC = cbmz_bb_Main.f90   cbmz_bb_Initialize.f90   cbmz_bb_Integrator.f90 cbmz_bb_Model.f90
+MAINOBJ = cbmz_bb_Main.o     cbmz_bb_Initialize.o     cbmz_bb_Integrator.o   cbmz_bb_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o cbmz_bb.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o cbmz_bb_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_bb_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_bb_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O cbmz_bb_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f cbmz_bb*.o cbmz_bb*.mod \
+	cbmz_bb*.dat cbmz_bb.exe cbmz_bb*.mexglx \
+	cbmz_bb.map
+
+distclean:
+	rm -f cbmz_bb*.o cbmz_bb*.mod \
+	cbmz_bb*.dat cbmz_bb.exe cbmz_bb.map \
+	cbmz_bb*.f90 cbmz_bb_*.mexglx
+
+cbmz_bb_Precision.o: cbmz_bb_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Parameters.o: cbmz_bb_Parameters.f90 \
+	            cbmz_bb_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Monitor.o: cbmz_bb_Monitor.f90 \
+	             cbmz_bb_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Global.o: cbmz_bb_Global.f90 \
+	            cbmz_bb_Parameters.o cbmz_bb_Precision.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Initialize.o: cbmz_bb_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Function.o: cbmz_bb_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Stochastic.o: cbmz_bb_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_JacobianSP.o: cbmz_bb_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Jacobian.o: cbmz_bb_Jacobian.f90  $(GENOBJ) cbmz_bb_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_LinearAlgebra.o: cbmz_bb_LinearAlgebra.f90 $(GENOBJ) cbmz_bb_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Rates.o: cbmz_bb_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_HessianSP.o: cbmz_bb_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Hessian.o:  cbmz_bb_Hessian.f90 $(GENOBJ) cbmz_bb_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_StoichiomSP.o: cbmz_bb_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Stoichiom.o: cbmz_bb_Stoichiom.f90  $(GENOBJ) cbmz_bb_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Util.o: cbmz_bb_Util.f90  $(GENOBJ) cbmz_bb_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Main.o: cbmz_bb_Main.f90  $(ALLOBJ) cbmz_bb_Initialize.o cbmz_bb_Model.o cbmz_bb_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Model.o: cbmz_bb_Model.f90  $(ALLOBJ) cbmz_bb_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+cbmz_bb_Integrator.o: cbmz_bb_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<

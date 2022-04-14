@@ -1,0 +1,160 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: Set here the F90 compiler and options
+#       Pedefined compilers: INTEL, PGF, HPUX, LAHEY
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+COMPILER = GNU
+#COMPILER = LAHEY
+#COMPILER = INTEL
+#COMPILER = PGF
+#COMPILER = HPUX
+
+FC_GNU     = g95
+FOPT_GNU   = -cpp -O -pg -fbounds-check 
+FC_LAHEY   = lf95
+FOPT_LAHEY = -Cpp --pca
+#FOPT_LAHEY = -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap
+FC_INTEL   = ifort 
+FOPT_INTEL = -cpp -O -mp -pc80 -prec_div -tpp7 -implicitnone
+FC_PGF     = pgf90
+FOPT_PGF   = -Mpreprocess -O -fast -pc 80 -Kieee
+FC_HPUX    = f90
+FOPT_HPUX  = -O -u +Oall +check=on
+
+# define FULL_ALGEBRA for non-sparse integration
+FC   = $(FC_$(COMPILER))
+FOPT = $(FOPT_$(COMPILER)) # -DFULL_ALGEBRA
+
+LIBS =
+#LIBS = -llapack -lblas
+
+# Command to create Matlab mex gateway routines 
+# Note: use $(FC) as the mex Fortran compiler
+MEX  = mex
+
+GENSRC = t1_mozcart_Precision.f90  \
+	 t1_mozcart_Parameters.f90     \
+	 t1_mozcart_Global.f90  
+
+GENOBJ = t1_mozcart_Precision.o    \
+	 t1_mozcart_Parameters.o       \
+	 t1_mozcart_Global.o     
+
+FUNSRC = t1_mozcart_Function.f90 
+FUNOBJ = t1_mozcart_Function.o 
+
+JACSRC = t1_mozcart_JacobianSP.f90  t1_mozcart_Jacobian.f90
+JACOBJ = t1_mozcart_JacobianSP.o    t1_mozcart_Jacobian.o
+
+HESSRC = t1_mozcart_HessianSP.f90   t1_mozcart_Hessian.f90
+HESOBJ = t1_mozcart_HessianSP.o     t1_mozcart_Hessian.o
+
+STMSRC = t1_mozcart_StoichiomSP.f90 t1_mozcart_Stoichiom.f90 
+STMOBJ = t1_mozcart_StoichiomSP.o   t1_mozcart_Stoichiom.o
+
+UTLSRC = t1_mozcart_Rates.f90 t1_mozcart_Util.f90 t1_mozcart_Monitor.f90
+UTLOBJ = t1_mozcart_Rates.o   t1_mozcart_Util.o   t1_mozcart_Monitor.o
+
+LASRC  = t1_mozcart_LinearAlgebra.f90 
+LAOBJ  = t1_mozcart_LinearAlgebra.o   
+
+STOCHSRC = t1_mozcart_Stochastic.f90 
+STOCHOBJ = t1_mozcart_Stochastic.o 
+
+MAINSRC = t1_mozcart_Main.f90   t1_mozcart_Initialize.f90   t1_mozcart_Integrator.f90 t1_mozcart_Model.f90
+MAINOBJ = t1_mozcart_Main.o     t1_mozcart_Initialize.o     t1_mozcart_Integrator.o   t1_mozcart_Model.o 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       objects needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ALLOBJ = $(GENOBJ) $(FUNOBJ) $(JACOBJ) $(HESOBJ) $(STMOBJ) \
+	 $(UTLOBJ) $(LAOBJ)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# User: modify the line below to include only the
+#       executables needed by your application
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+all:    exe
+
+exe:	$(ALLOBJ) $(MAINOBJ) 
+	$(FC) $(FOPT) $(ALLOBJ) $(MAINOBJ) $(LIBS) -o t1_mozcart.exe
+
+stochastic:$(ALLOBJ) $(STOCHOBJ) $(MAINOBJ)
+	$(FC) $(FOPT) $(ALLOBJ) $(STOCHOBJ) $(MAINOBJ) $(LIBS) \
+	-o t1_mozcart_stochastic.exe
+
+mex:    $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O t1_mozcart_mex_Fun.f90     $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O t1_mozcart_mex_Jac_SP.f90  $(ALLOBJ)
+	$(MEX) FC#$(FC) -fortran -O t1_mozcart_mex_Hessian.f90 $(ALLOBJ)
+
+clean:
+	rm -f t1_mozcart*.o t1_mozcart*.mod \
+	t1_mozcart*.dat t1_mozcart.exe t1_mozcart*.mexglx \
+	t1_mozcart.map
+
+distclean:
+	rm -f t1_mozcart*.o t1_mozcart*.mod \
+	t1_mozcart*.dat t1_mozcart.exe t1_mozcart.map \
+	t1_mozcart*.f90 t1_mozcart_*.mexglx
+
+t1_mozcart_Precision.o: t1_mozcart_Precision.f90 
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Parameters.o: t1_mozcart_Parameters.f90 \
+	            t1_mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Monitor.o: t1_mozcart_Monitor.f90 \
+	             t1_mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Global.o: t1_mozcart_Global.f90 \
+	            t1_mozcart_Parameters.o t1_mozcart_Precision.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Initialize.o: t1_mozcart_Initialize.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Function.o: t1_mozcart_Function.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Stochastic.o: t1_mozcart_Stochastic.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_JacobianSP.o: t1_mozcart_JacobianSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Jacobian.o: t1_mozcart_Jacobian.f90  $(GENOBJ) t1_mozcart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_LinearAlgebra.o: t1_mozcart_LinearAlgebra.f90 $(GENOBJ) t1_mozcart_JacobianSP.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Rates.o: t1_mozcart_Rates.f90  $(GENOBJ) 
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_HessianSP.o: t1_mozcart_HessianSP.f90  $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Hessian.o:  t1_mozcart_Hessian.f90 $(GENOBJ) t1_mozcart_HessianSP.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_StoichiomSP.o: t1_mozcart_StoichiomSP.f90 $(GENOBJ)
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Stoichiom.o: t1_mozcart_Stoichiom.f90  $(GENOBJ) t1_mozcart_StoichiomSP.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Util.o: t1_mozcart_Util.f90  $(GENOBJ) t1_mozcart_Monitor.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Main.o: t1_mozcart_Main.f90  $(ALLOBJ) t1_mozcart_Initialize.o t1_mozcart_Model.o t1_mozcart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Model.o: t1_mozcart_Model.f90  $(ALLOBJ) t1_mozcart_Integrator.o
+	$(FC) $(FOPT) -c $<
+
+t1_mozcart_Integrator.o: t1_mozcart_Integrator.f90  $(ALLOBJ)
+	$(FC) $(FOPT) -c $<
