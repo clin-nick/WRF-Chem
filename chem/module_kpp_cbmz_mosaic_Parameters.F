@@ -13,7 +13,7 @@
 !        R. Sander, Max-Planck Institute for Chemistry, Mainz, Germany
 ! 
 ! File                 : cbmz_mosaic_Parameters.f90
-! Time                 : Tue Apr 12 23:42:50 2022
+! Time                 : Thu Apr 14 13:13:32 2022
 ! Working directory    : /network/rit/lab/lulab/chinan/WRF/WRFV4.0/WRF/chem/KPP/mechanisms/cbmz_mosaic
 ! Equation file        : cbmz_mosaic.kpp
 ! Output root filename : cbmz_mosaic

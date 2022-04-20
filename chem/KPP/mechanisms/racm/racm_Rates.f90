@@ -13,7 +13,7 @@
 !        R. Sander, Max-Planck Institute for Chemistry, Mainz, Germany
 ! 
 ! File                 : racm_Rates.f90
-! Time                 : Tue Apr 12 23:43:26 2022
+! Time                 : Thu Apr 14 13:14:08 2022
 ! Working directory    : /network/rit/lab/lulab/chinan/WRF/WRFV4.0/WRF/chem/KPP/mechanisms/racm
 ! Equation file        : racm.kpp
 ! Output root filename : racm
