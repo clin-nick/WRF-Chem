@@ -603,7 +603,7 @@ size_loop: &
 ! using the apportioning fractions
 !                aem_so4 = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_sulf)      
 !clin set aem_so4=0
-                aem_so4 = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_sulf)*0 
+                IF ( p_ebu_sulf .gt. 1) aem_so4 = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_sulf) 
                 aem_oc  = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_oc)    
                 aem_bc  = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_bc) 
 ! Option to calculate OIN fraction of total PM for fire emissions 

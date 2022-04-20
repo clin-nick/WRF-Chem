@@ -13,7 +13,7 @@
 !        R. Sander, Max-Planck Institute for Chemistry, Mainz, Germany
 ! 
 ! File                 : cbmz_bb_Parameters.f90
-! Time                 : Tue Apr 12 23:42:48 2022
+! Time                 : Thu Apr 14 13:13:30 2022
 ! Working directory    : /network/rit/lab/lulab/chinan/WRF/WRFV4.0/WRF/chem/KPP/mechanisms/cbmz_bb
 ! Equation file        : cbmz_bb.kpp
 ! Output root filename : cbmz_bb

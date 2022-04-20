@@ -604,7 +604,7 @@ size_loop: &
 
 
 
-                aem_so4 = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_sulf)*0 
+                IF ( p_ebu_sulf .gt. 1) aem_so4 = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_sulf) 
                 aem_oc  = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_oc)    
                 aem_bc  = bburn_mosaic_f(n)*ebu(i,k,j,p_ebu_bc) 
 
