@@ -1,1 +1,1 @@
-# WRFCHEM
+# WRF-CHEM
