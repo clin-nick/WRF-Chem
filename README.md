@@ -29,3 +29,12 @@ https://wiki.albany.edu/display/asrc/%27Kratos%27+cluster
 8.	ASRC IT support
 http://support.asrc.albany.edu/
 # Steps for WRF-Chem Run
+## Run WPS
+1. Prepare MET IC/BC Input:
+- GFS:  https://www.ncdc.noaa.gov/data-access/model-data/model-datasets/global-forcast-system-gfs ,
+- NAM:  https://rda.ucar.edu/datasets/ds609.0/
+2. Run geogrid
+- Edit the configuration file “namelist.wps”
+- Check domain: 
+ncl util/plotgrids_new.ncl 
+- Run geogrid.exe
